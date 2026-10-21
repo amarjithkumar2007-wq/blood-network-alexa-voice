@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: blood-network-voice
+    runtime: node
+    plan: free
+    buildCommand: echo "no build step"
+    startCommand: node server.js
+    envVars:
+      - key: GNANI_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
