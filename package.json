@@ -1,0 +1,12 @@
+{
+  "name": "blood-network-voice",
+  "version": "1.0.0",
+  "description": "Blood Network Voice - a simulated Alexa+ experience (Hinglish voice agent for blood donor matching, synthetic demo data)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/agent.test.js"
+  },
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}
