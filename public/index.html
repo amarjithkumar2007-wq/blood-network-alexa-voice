@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Blood Network Voice - Simulated Alexa+ Experience</title>
+<meta name="description" content="A simulated Alexa+ experience: ask for blood donors in Hinglish, an agent matches synthetic demo donors. Built for the Amazon Developer Hackathon 2026 (Alexa+ track).">
+<style>
+  :root {
+    --bg: #0b1020; --bg2: #131b34; --card: #1a2440; --line: #2a3a63;
+    --blue: #38b6ff; --blue2: #7c5cff; --text: #eaf2ff; --dim: #9fb1d1;
+    --chip: #102a43; --good: #35d0a5;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
+    background: radial-gradient(1200px 800px at 50% -10%, #1b2a52 0%, var(--bg) 55%) fixed;
+    color: var(--text); display: flex; flex-direction: column; min-height: 100dvh;
+  }
+  header { padding: 14px 16px 8px; text-align: center; }
+  header h1 { font-size: 20px; font-weight: 700; letter-spacing: .3px; }
+  header h1 .x { color: var(--blue); }
+  .badges { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+  .badge {
+    font-size: 11px; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--dim); background: rgba(255,255,255,.03);
+  }
+  .badge.sim { color: #ffd479; border-color: #6b5518; }
+  #orb-wrap { display: flex; flex-direction: column; align-items: center; padding: 10px 0 4px; }
+  #orb {
+    width: 96px; height: 96px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #59c8ff, #2f6bff 45%, #7c5cff 80%);
+    box-shadow: 0 0 40px rgba(56,182,255,.35), 0 0 90px rgba(124,92,255,.25);
+    transition: transform .25s ease; animation: idle 4s ease-in-out infinite;
+  }
+  @keyframes idle { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  #orb.listening { animation: listen 1s ease-in-out infinite; }
+  @keyframes listen {
+    0%,100% { transform: scale(1); box-shadow: 0 0 40px rgba(56,182,255,.4); }
+    50% { transform: scale(1.14); box-shadow: 0 0 70px rgba(56,182,255,.7), 0 0 130px rgba(124,92,255,.5); }
+  }
+  #orb.thinking { animation: think 1.1s linear infinite; }
+  @keyframes think { from { filter: hue-rotate(0deg); transform: scale(1.02);} to { filter: hue-rotate(60deg); transform: scale(1.02);} }
+  #orb.speaking { animation: speak .5s ease-in-out infinite; }
+  @keyframes speak { 0%,100% { transform: scale(1.02, .96);} 50% { transform: scale(.97, 1.08);} }
+  #status { margin-top: 10px; font-size: 13px; color: var(--dim); min-height: 18px; }
+  main { flex: 1; overflow-y: auto; padding: 8px 14px 14px; display: flex; flex-direction: column; gap: 10px; max-width: 720px; width: 100%; margin: 0 auto; }
+  .msg { max-width: 88%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+  .msg.user { align-self: flex-end; background: linear-gradient(135deg, #2f6bff, #7c5cff); border-bottom-right-radius: 4px; }
+  .msg.agent { align-self: flex-start; background: var(--card); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .msg .who { display: block; font-size: 10px; color: var(--dim); margin-bottom: 4px; letter-spacing: .4px; text-transform: uppercase; }
+  .chip {
+    align-self: flex-start; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    background: var(--chip); border: 1px solid #1d456b; color: #bfe3ff;
+    font-size: 12px; padding: 6px 12px; border-radius: 10px; font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  .chip .arrow { color: var(--good); }
+  .hint { align-self: center; font-size: 12px; color: var(--dim); text-align: center; }
+  .sugs { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; padding: 2px 12px 8px; }
+  .sug {
+    font-size: 12px; color: var(--text); background: rgba(255,255,255,.05);
+    border: 1px solid var(--line); padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  }
+  .sug:active { background: rgba(255,255,255,.12); }
+  footer { padding: 10px 14px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: rgba(8,12,26,.75); backdrop-filter: blur(8px); }
+  .controls { display: flex; gap: 10px; align-items: center; max-width: 720px; margin: 0 auto; }
+  #txt {
+    flex: 1; background: var(--bg2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 999px; padding: 12px 16px; font-size: 15px; outline: none;
+  }
+  #txt:focus { border-color: var(--blue); }
+  #mic, #send {
+    width: 52px; height: 52px; border-radius: 50%; border: none; cursor: pointer;
+    display: grid; place-items: center; font-size: 22px; flex-shrink: 0;
+  }
+  #mic { background: linear-gradient(135deg, #2f6bff, #7c5cff); color: #fff; }
+  #mic.rec { background: #e5484d; animation: listen 1s infinite; }
+  #send { background: var(--card); color: var(--text); border: 1px solid var(--line); }
+  details.how { max-width: 720px; margin: 8px auto 0; font-size: 12px; color: var(--dim); }
+  details.how summary { cursor: pointer; color: var(--dim); }
+  details.how p { margin-top: 6px; line-height: 1.5; }
+  .err { color: #ff9a9a; font-size: 13px; text-align: center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Blood Network <span class="x">Voice</span></h1>
+  <div class="badges">
+    <span class="badge sim">Simulated Alexa+ experience</span>
+    <span class="badge">Synthetic demo donors</span>
+    <span class="badge">Hinglish voice + text</span>
+  </div>
+</header>
+
+<div id="orb-wrap">
+  <div id="orb"></div>
+  <div id="status">Tap the mic or type below</div>
+</div>
+
+<main id="chat" aria-live="polite">
+  <div class="msg agent"><span class="who">Alexa+ (simulated)</span>Namaste! Main Blood Network Voice hu. Boliye ya likhiye - jaise "O positive chahiye Dilsukhnagar me urgent".</div>
+</main>
+
+<div class="sugs">
+  <button class="sug">O positive chahiye Dilsukhnagar me urgent, 2 units</button>
+  <button class="sug">B negative Secunderabad me</button>
+  <button class="sug">Sneha kab phir se donate kar sakti hai?</button>
+  <button class="sug">Plasma chahiye Mehdipatnam me</button>
+</div>
+
+<footer>
+  <div class="controls">
+    <input id="txt" placeholder="Type in Hinglish..." autocomplete="off" enterkeyhint="send">
+    <button id="send" title="Send" aria-label="Send">&#10148;</button>
+    <button id="mic" title="Speak" aria-label="Speak">&#127908;</button>
+  </div>
+  <details class="how">
+    <summary>How this simulation works</summary>
+    <p>Your voice is transcribed by Gnani Prisma STT (Hindi/Hinglish). An LLM agent (OpenRouter) decides which action to take - find donors, create a request, check donation cooldown, or escalate - and deterministic code executes it against 16 synthetic demo donors with real ABO/Rh compatibility, distance and cooldown rules. The reply is spoken back by Gnani Timbre TTS. The same four tools are also exposed as an MCP server at /mcp (spec 2025-11-25, Streamable HTTP) - the standard that powers real Alexa+ integrations. No real donors, no real messages.</p>
+  </details>
+</footer>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const chat = $('#chat'), orb = $('#orb'), statusEl = $('#status'), txt = $('#txt');
+const sessionId = localStorage.getItem('bnv-session') || (() => { const id = 'web-' + Math.random().toString(36).slice(2, 10); localStorage.setItem('bnv-session', id); return id; })();
+
+function scrollDown() { chat.scrollTop = chat.scrollHeight; }
+function addMsg(cls, who, text) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + cls;
+  if (who) { const w = document.createElement('span'); w.className = 'who'; w.textContent = who; d.appendChild(w); }
+  d.appendChild(document.createTextNode(text));
+  chat.appendChild(d); scrollDown();
+}
+function addChip(action) {
+  const d = document.createElement('div');
+  d.className = 'chip';
+  const args = Object.entries(action.args || {}).map(([k, v]) => k + ': ' + v).join(', ');
+  d.innerHTML = '<span>&#9881; ' + action.tool + '(' + args.replace(/</g, '&lt;') + ')</span><span class="arrow">&rarr; ' + action.summary.replace(/</g, '&lt;') + '</span>';
+  chat.appendChild(d); scrollDown();
+}
+function setState(state, label) {
+  orb.className = state || '';
+  statusEl.textContent = label;
+}
+
+async function handleResponse(r) {
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { addMsg('agent', 'Alexa+ (simulated)', j.error || 'Kuch gadbad ho gayi - phir try karein.'); return null; }
+  return j;
+}
+function render(out) {
+  if (out.transcript && out._voice) addMsg('user', 'You (voice)', out.transcript);
+  (out.actions || []).forEach(addChip);
+  if (out.replyText) addMsg('agent', 'Alexa+ (simulated)', out.replyText);
+}
+
+async function sendText(text) {
+  if (!text.trim()) return;
+  addMsg('user', 'You', text);
+  txt.value = '';
+  setState('thinking', 'Thinking...');
+  try {
+    const out = await handleResponse(await fetch('/api/agent/text', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, sessionId }),
+    }));
+    if (out) render(out);
+    setState('', 'Tap the mic or type below');
+  } catch (e) { setState('', 'Network error - try again'); }
+}
+
+// --- Voice: record with WebAudio, encode WAV (16k mono) in the browser, no server-side ffmpeg ---
+let audioCtx, mediaStream, recorder = null;
+async function recordWav(maxMs = 8000) {
+  mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true } });
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+  const src = audioCtx.createMediaStreamSource(mediaStream);
+  const proc = audioCtx.createScriptProcessor(4096, 1, 1);
+  const chunks = [];
+  proc.onaudioprocess = (e) => chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+  src.connect(proc); proc.connect(audioCtx.destination);
+  await new Promise((resolve) => {
+    const stop = () => { clearTimeout(timer); mediaStream.getTracks().forEach((t) => t.stop()); resolve(); };
+    const timer = setTimeout(stop, maxMs);
+    recorder = { stop };
+  });
+  src.disconnect(); proc.disconnect();
+  const len = chunks.reduce((n, c) => n + c.length, 0);
+  const pcm = new Float32Array(len);
+  let off = 0; chunks.forEach((c) => { pcm.set(c, off); off += c.length; });
+  const rate = audioCtx.sampleRate;
+  await audioCtx.close();
+  // WAV encode (16-bit PCM)
+  const buf = new ArrayBuffer(44 + len * 2), v = new DataView(buf);
+  const wstr = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  wstr(0, 'RIFF'); v.setUint32(4, 36 + len * 2, true); wstr(8, 'WAVE'); wstr(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  wstr(36, 'data'); v.setUint32(40, len * 2, true);
+  for (let i = 0; i < len; i++) { const s = Math.max(-1, Math.min(1, pcm[i])); v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true); }
+  return new Blob([buf], { type: 'audio/wav' });
+}
+const b64 = (blob) => new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); });
+
+let recording = false;
+$('#mic').addEventListener('click', async () => {
+  if (recording) { recorder && recorder.stop(); recording = false; return; }
+  try {
+    recording = true; $('#mic').classList.add('rec');
+    setState('listening', 'Listening... (tap mic to stop)');
+    const wav = await recordWav();
+    recording = false; $('#mic').classList.remove('rec');
+    setState('thinking', 'Thinking...');
+    const out = await handleResponse(await fetch('/api/agent/voice', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ audioBase64: await b64(wav), mimeType: 'audio/wav', sessionId }),
+    }));
+    if (out) {
+      out._voice = true; render(out);
+      if (out.replyAudioBase64) {
+        setState('speaking', 'Speaking...');
+        const a = new Audio('data:audio/wav;base64,' + out.replyAudioBase64);
+        a.onended = () => setState('', 'Tap the mic or type below');
+        a.onerror = () => setState('', 'Tap the mic or type below');
+        a.play().catch(() => setState('', 'Tap the mic or type below'));
+        return;
+      }
+    }
+    setState('', 'Tap the mic or type below');
+  } catch (e) {
+    recording = false; $('#mic').classList.remove('rec');
+    setState('', 'Mic unavailable - please type instead');
+  }
+});
+$('#send').addEventListener('click', () => sendText(txt.value));
+txt.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendText(txt.value); });
+document.querySelectorAll('.sug').forEach((b) => b.addEventListener('click', () => sendText(b.textContent)));
+</script>
+</body>
+</html>
